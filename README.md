@@ -1,264 +1,101 @@
-![All Releases](https://img.shields.io/github/downloads/ohhloz/harvester/total.svg) [![Forge Installs](https://img.shields.io/badge/dynamic/json?label=Forge%20Installs&query=package.installs&suffix=%25&url=https%3A%2F%2Fforge-vtt.com%2Fapi%2Fbazaar%2Fpackage%2Fharvester&colorB=03ff1c&style=for-the-badge)](https://forge-vtt.com/bazaar#package=harvester)
+# Better Harvesting & Looting (v13)
 
-# Better Harvesting and Looting
+A Foundry VTT module for Dungeons & Dragons 5e that allows players to harvest crafting materials from creature corpses and loot currency from defeated enemies.
 
-A QoL FoundryVTT module to improve the harvesting and looting experience.
+This is a community-maintained fork of the original [Better Harvesting & Looting](https://github.com/p4535992/foundryvtt-harvester) module, updated for **Foundry VTT v13** and **dnd5e v4**.
 
-**IMPORTANT NOTE**: To make the module work with the requestor module you have to set the module setting of the latter with key `Module Permissions` with the value ` Request: Anyone. Accept: Only if GM or self` 
+---
 
-![](/wiki/images/requestor_settings.png)
+## Requirements
 
-This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of
-the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The
-SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at
-https://creativecommons.org/licenses/by/4.0/legalcode.  
+- Foundry VTT v13+
+- dnd5e system v4+
+- [socketlib](https://foundryvtt.com/packages/socketlib) (required)
+- [Item Piles](https://foundryvtt.com/packages/item-piles) (optional, recommended)
+- [Better Roll Tables](https://foundryvtt.com/packages/better-rolltables) (optional)
 
-## Installation
+---
 
-It's always easiest to install modules from the in game add-on browser.
+## Features
 
-To install this module manually:
-1.  Inside the Foundry "Configuration and Setup" screen, click "Add-on Modules"
-2.  Click "Install Module"
-3.  In the "Manifest URL" field, paste the following url:
-`https://raw.githubusercontent.com/OhhLoz/Harvester/master/src/module.json`
-4.  Click 'Install' and wait for installation to complete
-5.  Don't forget to enable the module in game using the "Manage Module" button
+### Harvesting
 
-### socketlib
+- Players can harvest crafting materials from defeated creatures using the **Harvest** action, which is automatically added to PC and/or NPC sheets based on module settings.
+- The correct skill check is determined automatically from the creature's harvest table (e.g. Investigation for oozes, Nature for beasts).
+- The skill check dialog supports **advantage and disadvantage** via the standard dnd5e roll configuration (hold Alt for advantage).
+- Items awarded are displayed by name and icon in the chat card and added to the harvesting actor's inventory.
 
-This module uses the [socketlib](https://github.com/manuelVo/foundryvtt-socketlib) library for wrapping utility methods. **It is a hard dependency**
+#### Size-based harvest limits
 
-### requestor
+Creatures can be harvested multiple times based on their size. The harvested status icon only appears on the token once the creature has been fully harvested.
 
-This module uses the [requestor](https://foundryvtt.com/packages/requestor) library for a better visual display experience for the user. **It is a hard dependency**
+| Size | Harvests allowed |
+|------|-----------------|
+| Tiny | 1 |
+| Small | 1 |
+| Medium | 2 |
+| Large | 3 |
+| Huge | 4 |
+| Gargantuan | 4 |
 
-### Better Rolltables
+Size is read directly from the creature's actor sheet, so custom homebrew monsters are fully supported.
 
-This module uses the [Better Rolltables](https://github.com/p4535992/foundryvtt-better-rolltables) for more flexibility with harvesting. **It is an optional dependency** and it is recommended for the best experience and compatibility with other modules.
+### Looting
 
-### Item Piles
+- Players can loot currency from defeated creatures using the **Loot** action.
+- Currency formulas (e.g. `4d6*100cp`) are rolled automatically and the actual amounts are displayed.
+- A **GM-only confirmation dialog** appears showing what was found and which creature it came from, with buttons to add the loot to the looting actor's inventory or discard it.
+- The chat card reflects the outcome — showing loot received or indicating nothing was found.
 
-This module uses the [Item Piles](https://github.com/fantasycalendar/FoundryVTT-ItemPiles) for convenience with sharing. **It is an optional dependency** and it is recommended for the best experience and compatibility with other modules.
+---
 
-## NOTE i need really help with a good documentation of this module, please someone help me...
+## v13 Migration Notes
 
-## Harvester Feature 
+This fork addresses the following breaking changes from Foundry v11/v12 to v13:
 
-This action allows the Harvesting action to be linked to a standard rolltable retrieve the result items.
+### Bug Fixes
 
-In the standard Harvest Rolltable sheet, the "association" field is the name of the token monster with the name of the rolltable! So **"Name of The Monster" === "Name of the Rolltable" (case insensitive)**.
+- **Removed Requestor dependency** — replaced with Foundry v13's native `DialogV2` API. The Requestor module is no longer required.
+- **Fixed ES module imports** — all import paths now include `.js` extensions as required by v13's strict ES module handling.
+- **Fixed module ID** — internal constants, compendium references, and socket registration all use the correct `harvester-v13` module ID.
+- **Fixed `dnd5e.postUseActivity` hook timing** — dnd5e v4 does not await this hook, so harvest/loot dialogs are now deferred via `setTimeout` to prevent silent failures.
+- **Fixed `rollSkill` API** — updated to the dnd5e v4 signature: `actor.rollSkill({ skill: "inv" }, { configure: true })`.
+- **Fixed deprecated globals** — replaced `Token`, `Item`, `RollTable`, and `TokenDocument` with their namespaced equivalents (`foundry.canvas.placeables.Token`, `foundry.documents.*`).
+- **Fixed `TableResult#documentCollection`** — replaced with `fromUuid()` using the `brt-result-uuid` flag, with automatic translation of old `harvester.*` pack IDs to `harvester-v13.*`.
+- **Fixed `StatusEffectConfig#icon`** — updated to `img` as required by v13.
+- **Fixed actor resolution** — `validateAction` now always reads from `targetedToken.actor` rather than the token delta, ensuring correct size and HP values on unlinked tokens.
+- **Fixed compendium skill value** — `brt-skill-value` flags are now read directly from roll table documents regardless of whether Better Roll Tables is active.
+- **Fixed item DC check** — no longer relies on `item.compendium.metadata.id`; reads `system.description.chat` directly with a safe fallback.
+- **Fixed grey/gray spelling** — creature name matching normalises British/American spelling variants before regex comparison.
 
-If you have any doubt about the matching try out the api method and open a issue:
+### New Features
 
-`game.modules.get("harvester").api.testWithRegex("Shadow Demon", "Shadow Demon Arcane")) => boolean`
+- **Size-based harvest limits** — creatures can be harvested multiple times based on their creature size (see table above).
+- **Harvest count tracking** — stored on the token document flags, works correctly for both linked and unlinked tokens across sessions.
+- **Harvested icon timing** — the Harvested status effect icon only appears on the token after the maximum number of harvests has been reached.
+- **Full skill names** — the skill check button shows the full skill name (e.g. "Investigation") rather than the abbreviation ("inv").
+- **Item display** — harvested items are shown with their icon and name in the chat card rather than raw UUIDs.
+- **Advantage/disadvantage support** — the roll configuration dialog always appears, allowing Alt (advantage) and Ctrl (disadvantage).
+- **Evaluated loot amounts** — loot currency formulas are rolled and evaluated before display; the chat card shows actual amounts (e.g. `1400cp`) not formulas.
+- **GM loot confirmation** — a private GM dialog appears after looting showing what was found and from which creature, with options to add to the actor's inventory or discard.
 
-The re are two module settings to add some preferences to the search of the term:
+---
 
+## Settings
 
-- **Enable exact match for search on source reference:** By default we try to guess with some regex what you want for example (checkout the readme table). IF YOU JUST WANT A EXACT MATCH enable this module settings."
-- **Enable any suffix match for search on source reference:** By default we try to guess with some regex what you want for example (checkout the readme table). Usually 'Shadow Demon Witchguard' and 'Shadow Demon Servant' give the same results so to avoid the duplicate of the rolltables you can enables this module settings and create one RollTable 'Shadow Demon', this will convert the source reference  fomr 'Shadow Demon' to 'Shadow Demon(.*?)' for the regular expression check. If you already have set your regular expression DO NOT ENABLE THIS.
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Harvesting: Allow ability score change on roll | Lets players choose a different ability score for the harvest check | Off |
+| Harvesting: Search RollTable by name | Forces name-based table lookup even when Better Roll Tables is active | Off |
+| Looting: Disable Looting mechanic | Disables the Loot action entirely | Off |
+| Auto add items | Automatically adds harvested/looted items to actor inventory | On |
+| GM Only | Whispers harvest/loot results to GM only | Off |
+| NPC Only Harvest | Prevents harvesting player-owned tokens | Off |
+| Require Dead effect | Requires the Dead status effect before harvesting | Off |
+| Enforce Range | Enforces distance limits based on creature size | Off |
 
-**IMPORTANT:** By default we try to guess with some regex what you want for example if you loot a `"Shadow Demon"` it will positively validate a rolltable with `"Shadow Demon Arcane"`, but not the reverse and will not validate `"Shadow Demon Psych"` with `"Shadow Demon Arcane"`, here a table of examples:
+---
 
-| Source        | Target        |    Result     |
-|---------------|---------------|---------------|
-|Shadow|Shadow Demon BBB|true |
-|Shadow Demon|Shadow Demon Arcane|false |
-|Shadow Demon Arcane|Shadow Demon Arcane|true |
-|Shadow Demon Arcane|Shadow Demon|true |
-|Shadow Demon BBB|Shadow Demon|true |
-|Shadow Demon BBB|Shadow Demon Arcane|false |
-|Shadow Demon Warrior|Shadow Demon Arcane|false |
-|Shadow Demon Guard|Shadow Demon Arcane|false |
-|Shadow Demon Cro|Shadow Demon|true |
-|Shadow Demon Witchdoctor|Shadow Demon|true |
-|Shadow Demon BBB|(.*?)Shadow Demon Arcane(.*?)|false |
-|Shadow Demon Arcane|(.*?)Shadow Demon Arcane(.*?)|true |
-|Shadow Demon|(.*?)Shadow Demon(.*?)|true |
-|Shadow Demon BBB|(.*?)Shadow Demon(.*?)|true |
-|Shadow Demon Arcane|(.*?)Shadow Demon(.*?)|true |
+## Credits
 
-```
-Example 1
-Name of the monster: Wolf
-Name of the rolltable: Wolf or Harvester | Wolf
-Result: get any monster 'Wolf' with a BRT Rolltbale with the same name or subset of names 'Wolf'
-```
-
-```
-Example 2
-Name of the monster: Wolf
-Name of the rolltable: as regex: /^Wolf/ or /^Harvester | Wolf/
-Result: get any monster 'Wolf' with a Rolltbale with the same name or subset of names 'Wolf'
-```
-
-REMEMBER YOU MUST PUT THE NEW ROLLTABLE IN THE HARVESTER COMPENDIUM "harvester.harvester" or in the Rolltable directory of the world itself (for now).
-
-## Harvester Feature with Item Piles and Better Rolltables
-
-This action allows the Harvesting action to be linked to a BRT rolltable retrieve the result items and display it with the "Item Piles" module for retrieval.
-
-![](/wiki/images/harvester_requestor.png)
-
-Given the various needs there are three modes offeature behavior 
-- **"Keep It or Share It !"** : The player decides whether to keep the loot for themself or share it with others
-- **"Share It"** : It is shared with others by default
-- **"Keep It"** : It is kept for itself by default.
-
-![](/wiki/images/harvester_shareit_or_keepit.png)
-
-## Looting Feature
-
-This action allows the Looting action to be linked to a rolltable to  retrieve the result currencies and display on the chat.
-
-Every rolltable applies inline roll for the currency data on text table result.
-
-**NOTE:** Every text table result in a type BRT Loot tables is treated as a currencyData formula and converted in a item piles supported formula.
-
-This feature support many format from old and other modules here a list:
-
-- Old brt format: `100*1d6[gp],4d4+4[sp] to 100*1d6gp 4d4+4sp`
-- Harvester format: `[[/r 5d6]]{Copper} and [[/r 1d6*100]]{Electrum}[[/r 2d6*10]]`
-- Old brt loot currency formula: `{(2d8+1)*10[cp], 6d8+3 [sp]}`
-- Html code base with the editor: `<p>100*1d6[gp],4d4+4[sp]</p>`,`<p>[[/r 5d6]]{Copper} and [[/r 1d6*100]]{Electrum}[[/r 2d6*10]]</p>`, `<p>{(2d8+1)*10[cp], 6d8+3 [sp]}</p>`
-- Item Piles format **(The advisable format to use)**: `((2d8+1)*10)cp (6d8+3)sp`
-
-As a example a text like this:
-
-```
-{(2d8+1)*10[cp], 2d8+1 [sp]}
-```
-
-is converted runtime in this
-
-```
-20cp 16sp
-```
-
-
-## Integration with the module [Better Rolltables](https://github.com/p4535992/foundryvtt-better-rolltables) Feature
-
-In the BRT Harvest Rolltable sheet, the "Source Reference" field is the one used by this module to connect the monster to the rolltable! So **"Source Reference" === "Name of The Monster" OR a regex**.
-
-```
-Example 1
-Name of the monster: Wolf
-Source Reference on the BRT rolltable as simple strig: Wolf
-Result: get any monster 'Wolf' with a BRT Rolltbale with source reference 'Wolf'
-```
-
-```
-Example 2
-Name of the monster: Wolf
-Source Reference on the BRT rolltable as regex: /^Wolf/ 
-Result: get any monster 'Wolf' with a BRT Rolltable with source reference stating with the string 'Wolf'
-```
-
-BRT now support multi skill integration, just set an array of skills on the source reference field on the BRT rolltable
-
-![](/wiki/images/multi_skill_2.png)
-
-and launch the harvester action!
-
-![](/wiki/images/multi_skill_1.png)
-
-REMEMBER YOU MUST PUT THE NEW ROLLTABLE IN THE BRT COMPENDIUM "better-rolltables.brt-harvest-harvester" or in the Rolltable directory of the world itself (for now).
-
-# Build
-
-## Install all packages
-
-```bash
-npm install
-```
-
-### dev
-
-`dev` will let you develop your own code with hot reloading on the browser
-
-```bash
-npm run dev
-```
-
-### build
-
-`build` will build and set up a symlink between `dist` and your `dataPath`.
-
-```bash
-npm run build
-```
-
-### build:watch
-
-`build:watch` will build and watch for changes, rebuilding automatically.
-
-```bash
-npm run build:watch
-```
-
-### prettier-format
-
-`prettier-format` launch the prettier plugin based on the configuration [here](./.prettierrc)
-
-```bash
-npm run-script prettier-format
-```
-
-### lint
-
-`lint` launch the eslint process based on the configuration [here](./.eslintrc.json)
-
-```bash
-npm run-script lint
-```
-
-### lint:fix
-
-`lint:fix` launch the eslint process with the fix argument
-
-```bash
-npm run-script lint:fix
-```
-
-### build:json
-
-`build:json` unpack LevelDB pack on `src/packs` to the json db sources in `src/packs/_source`very useful for backup your items and manually fix some hard issue with some text editor
-
-```bash
-npm run-script build:json
-```
-
-### build:clean
-
-`build:clean` clean packs json sources in `src/packs/_source`. NOTE: usually this command is launched after the command `build:json` and after make some modifications on the json source files with some text editor, but before the `build:db`
-
-```bash
-npm run-script build:clean
-```
-
-### build:db
-
-`build:db` packs the json db sources in `src/packs/_source` to LevelDB pack on `src/packs` with the new jsons. NOTE: usually this command is launched after the command `build:json` and after make some modifications on the json source files with some text editor
-
-```bash
-npm run-script build:db
-```
-
-## [Changelog](./CHANGELOG.md)
-
-## Issues
-
-Any issues, bugs, or feature requests are always welcome to be reported directly to the [Issue Tracker](https://github.com/OhhLoz/Harvester/issues)
-
-## Licenses
-
-This package is under an [GPL-3.0 license](LICENSE) and the [Foundry Virtual Tabletop Limited License Agreement for module development](https://foundryvtt.com/article/license/).
-
-## Credit
-
-Thanks to anyone who helps me with this code! I appreciate the user community's feedback on this project!
-
-* [data-toolbox](https://foundryvtt.com/packages/data-toolbox) For providing an easy method for importing items programmatically from a csv to a compendium
-* [p4535992](https://github.com/p4535992) For adding Compatibility with Better Roll Tables, Requestor & Ongoing Support/Development
-* [ctbritt](https://github.com/ctbritt) For adding Item Piles integration
+Original module by [p4535992](https://github.com/p4535992). v13 migration and new features by the community.
